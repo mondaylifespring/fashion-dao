@@ -54,8 +54,7 @@
   (let
     ((proposer tx-sender)
      (proposal-id (var-get proposal-id-nonce))
-     (token-balance (default-to u0 (map-get? member-tokens proposer)))
-     (current-height (unwrap-panic (get-block-info? height u0))))
+     (token-balance (default-to u0 (map-get? member-tokens proposer))))
     
     ;; Validate inputs
     (asserts! (> (len title) u0) err-invalid-title)
@@ -73,8 +72,8 @@
       link: link,
       votes-for: u0,
       votes-against: u0,
-      status: "active",
-      execution-deadline: (+ current-height (var-get voting-period))
+      status: u"active",
+      execution-deadline: (+ burn-block-height (var-get voting-period))
     })
     
     ;; Increment the proposal ID counter
@@ -88,11 +87,10 @@
     ((proposal (unwrap! (map-get? proposals proposal-id) err-proposal-not-found))
      (voter tx-sender)
      (token-balance (default-to u0 (map-get? member-tokens voter)))
-     (vote-key {proposal-id: proposal-id, voter: voter})
-     (current-height (unwrap-panic (get-block-info? height u0))))
+     (vote-key {proposal-id: proposal-id, voter: voter}))
     
     ;; Check if proposal is still active
-    (asserts! (< current-height (get execution-deadline proposal)) err-proposal-ended)
+    (asserts! (< burn-block-height (get execution-deadline proposal)) err-proposal-ended)
     
     ;; Check if voter has already voted
     (asserts! (is-none (map-get? votes vote-key)) err-already-voted)
@@ -111,16 +109,15 @@
 ;; Finalize a proposal
 (define-public (finalize-proposal (proposal-id uint))
   (let
-    ((proposal (unwrap! (map-get? proposals proposal-id) err-proposal-not-found))
-     (current-height (unwrap-panic (get-block-info? height u0))))
+    ((proposal (unwrap! (map-get? proposals proposal-id) err-proposal-not-found)))
     
     ;; Check if voting period has ended
-    (asserts! (>= current-height (get execution-deadline proposal)) err-proposal-not-ended)
+    (asserts! (>= burn-block-height (get execution-deadline proposal)) err-proposal-not-ended)
     
     ;; Update proposal status
     (ok (map-set proposals proposal-id 
       (merge proposal 
-        {status: (if (> (get votes-for proposal) (get votes-against proposal)) "approved" "rejected")})))
+        {status: (if (> (get votes-for proposal) (get votes-against proposal)) u"approved" u"rejected")})))
   )
 )
 
